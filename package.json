@@ -1,9 +1,9 @@
 {
   "name": "@chocolatelibui/core",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
-  "types": "dist/types.d.ts",
+  "types": "dist/index.d.ts",
   "type": "module",
   "files": [
     "dist"
