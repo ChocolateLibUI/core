@@ -22,7 +22,7 @@ describe('Base', function () {
         }
       }
       defineElement(TestClass);
-    }).to.throw('Custom element names must not contain uppercase ASCII characters.');
+    }).to.throw('Custom element names must not contain uppercase ASCII characters. chocolatelibui-core-testClass');
   });
 
   describe('After Defining', function () {
@@ -50,8 +50,4 @@ describe('Base', function () {
       expect(inst.testClassMethod(1)).to.equal('string1');
     });
   });
-});
-
-describe('Yo', function () {
-
 });

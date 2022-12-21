@@ -52,7 +52,8 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
                 return {
                     root: "./cypress/pages",
                     build: {
-                        outDir: "./dist"
+                        outDir: "./dist",
+                        target: "esnext"
                     },
                     base: ''
                 }

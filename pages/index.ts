@@ -26,6 +26,10 @@ class TestClass extends Base {
     static elementName(): string {
         return 'testclass'
     }
+
+    options(options: number): this {
+        return this;
+    }
 }
 defineElement(TestClass);
 

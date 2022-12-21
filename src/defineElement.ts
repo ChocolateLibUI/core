@@ -1,7 +1,7 @@
 import { Base, BaseEvents } from "./base";
 import { validateElementName } from "./validateElementName";
 
-//Defines elements inheriting from the base
+/**Defines elements inheriting from the base*/
 export let defineElement = <T extends BaseEvents>(element: typeof Base<T>) => {
     let namespace = element.elementNameSpace();
     let check = element.elementName;
@@ -24,10 +24,11 @@ export let defineElement = <T extends BaseEvents>(element: typeof Base<T>) => {
             defineName = '-' + name + defineName;
         }
     }
+    defineName = namespace + defineName;
     try {
         // @ts-expect-error
-        customElements.define(namespace + defineName, element);
+        customElements.define(defineName, element);
     } catch (e) {
-        throw (validateElementName(namespace + defineName));
+        throw (validateElementName(defineName) + ' ' + defineName);
     }
 }
