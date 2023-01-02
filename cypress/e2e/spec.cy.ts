@@ -1,4 +1,5 @@
 /// <reference types="cypress" />
+import { Value } from "@chocolatelib/value";
 import { Base, BaseEvents, defineElement, ConnectEventVal } from "../../src";
 
 describe('Base', function () {
@@ -102,8 +103,40 @@ describe('Value', function () {
     static elementName(): string { return 'testclass3' }
   };
   defineElement(TestClass);
-  it('Instantiating undefined class', function () {
+  it('Attaching Value then appending element', function () {
+    return new Promise((a) => {
+      let inst = new TestClass();
+      let value = new Value(1);
+      inst.attachValue(value, (val) => {
+        expect(val).equal(2);
+        a(undefined);
+      });
+      expect(value.inUse).equal(false);
+      document.body.appendChild(inst);
+      expect(value.inUse).equal(true);
+      value.set = 2;
+    });
+  });
+  it('Attaching Value then appending element, then removing element', function () {
     let inst = new TestClass();
-
+    let value = new Value(1);
+    inst.attachValue(value, () => { });
+    expect(value.inUse).equal(false);
+    document.body.appendChild(inst);
+    expect(value.inUse).equal(true);
+    document.body.removeChild(inst);
+    expect(value.inUse).equal(false);
+  });
+  it('Attaching Value then appending element, then dettaching value', function () {
+    let inst = new TestClass();
+    let value = new Value(1);
+    let func = inst.attachValue(value, () => { });
+    expect(value.inUse).equal(false);
+    document.body.appendChild(inst);
+    expect(value.inUse).equal(true);
+    inst.dettachValue(func);
+    expect(value.inUse).equal(false);
+    document.body.removeChild(inst);
+    expect(value.inUse).equal(false);
   });
 });
