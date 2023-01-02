@@ -29,6 +29,10 @@ export let defineElement = <T extends BaseEvents>(element: typeof Base<T>) => {
         // @ts-expect-error
         customElements.define(defineName, element);
     } catch (e) {
-        throw (validateElementName(defineName) + ' ' + defineName);
+        if ((<Error>e).message.includes('has already been used with this registry')) {
+            throw e;
+        } else {
+            throw new Error(validateElementName(defineName) + ' ' + defineName);
+        }
     }
 }

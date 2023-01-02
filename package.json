@@ -1,6 +1,6 @@
 {
   "name": "@chocolatelibui/core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -40,6 +40,7 @@
   },
   "homepage": "https://github.com/ChocolateLibUI/core#readme",
   "dependencies": {
-    "@chocolatelib/events": "^0.0.3"
+    "@chocolatelib/events": "^0.0.5",
+    "@chocolatelib/value": "^0.0.10"
   }
 }
