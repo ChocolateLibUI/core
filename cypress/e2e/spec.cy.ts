@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 import { Value } from "@chocolatelib/value";
-import { Base, BaseEvents, defineElement, ConnectEventVal } from "../../src";
+import { Base, BaseEvents, defineElement, ConnectEventVal, AccessTypes } from "../../src";
 
 describe('Base', function () {
   it('Instantiating undefined class', function () {
@@ -138,5 +138,18 @@ describe('Value', function () {
     expect(value.inUse).equal(false);
     document.body.removeChild(inst);
     expect(value.inUse).equal(false);
+  });
+});
+describe('Access', function () {
+  class TestClass extends Base {
+    static elementName(): string { return 'testclass4' }
+  };
+  defineElement(TestClass);
+  it('Set Access', function () {
+    let inst = new TestClass();
+    document.body.appendChild(inst);
+    expect(inst.inert).equal(false);
+    inst.access = AccessTypes.read
+    expect(inst.inert).equal(true);
   });
 });
