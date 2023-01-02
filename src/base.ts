@@ -1,6 +1,8 @@
+import "./base.scss"
 import { EListener, EventHandler } from "@chocolatelib/events";
 import { BaseObserver } from "./observer";
-import { Value } from "@chocolatelib/value";
+import { Listener, Value } from "@chocolatelib/value";
+import { Access, AccessTypes } from "./access";
 
 /**Event types for base*/
 export const enum ConnectEventVal {
@@ -26,7 +28,13 @@ export interface BaseEvents {
  * If another library defines an abstract base class, it is recommended to change the static elementNameSpace method to the name of the library
  * example for this library '@chocolatelibui/core' becomes 'chocolatelibui-core'
  * static elementNameSpace() { return 'chocolatelibui-core' }
- * This resets the nametree to the library name and prevents too long element names*/
+ * This resets the nametree to the library name and prevents too long element names
+ * 
+ * Elements have an access propery, which builds on the html inert property
+ * Access has the following three states
+ * write = normal interaction and look
+ * read = inert attribute is added making the element uninteractable, and add opacity 0.5 to make the element look inaccessible
+ * none = adds display:none to element to make it */
 export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends HTMLElement {
     private $connectedObserver?: BaseObserver;
     /**Works when element is connected to observer, otherwise it is an alias for isConnected*/
@@ -43,6 +51,10 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
     private $valueFuncs: ((value: any) => void)[] | undefined
     /**Function for connecting values */
     private $valueConnector: EListener<"connect", Base<MoreEvents>, MoreEvents["connect"]> | undefined
+    /**Access of element*/
+    protected $access: AccessTypes = AccessTypes.write
+    /**Access listener*/
+    private $accessListener: Listener<AccessTypes> | undefined
 
     constructor() {
         super()
@@ -159,6 +171,41 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
                     this.events.off('connect', this.$valueConnector!);
                 }
             }
+        }
+    }
+
+    /**Returns the current access of the element */
+    get access() {
+        return this.$access
+    }
+    /**Sets the access of the element */
+    set access(access: AccessTypes | Access) {
+        if (this.$accessListener) {
+            this.dettachValue(this.$accessListener);
+            delete this.$accessListener;
+        }
+        if (typeof access === 'object' && access instanceof Access) {
+            this.$accessListener = this.attachValue(access, (acc) => {
+                this.$accessChange(<AccessTypes>acc);
+                this.$access = <AccessTypes>acc;
+            });
+        } else {
+            this.$accessChange(access);
+            this.$access = access;
+        }
+    }
+    /**Access change function */
+    protected $accessChange(access: AccessTypes) {
+        switch (access) {
+            case AccessTypes.write:
+                this.inert = false;
+                break;
+            case AccessTypes.read:
+                this.inert = true;
+                break;
+            case AccessTypes.none:
+                this.setAttribute('inert', 'none');
+                break;
         }
     }
 }
