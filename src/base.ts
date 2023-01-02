@@ -19,6 +19,12 @@ export interface BaseEvents {
     connect: ConnectEventVal,
 }
 
+/**Base options for base class */
+export interface BaseOptions {
+    /**Access for element, default is write access */
+    access?: Access | AccessTypes
+}
+
 /**Shared class for elements to extend
  * All none abstract elements must use the defineElement function to declare itself
  * 
@@ -94,7 +100,10 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
     }
 
     /**Sets options for the element*/
-    options(options: any): this { options; return this }
+    options(options: BaseOptions): this {
+        this.access = options.access;
+        return this
+    }
 
     /**This changes the web component to only call its connect functions when an observer observs it*/
     attachToObserver(observer?: BaseObserver) {
@@ -178,8 +187,8 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
     get access() {
         return this.$access
     }
-    /**Sets the access of the element */
-    set access(access: AccessTypes | Access) {
+    /**Sets the access of the element, passing undefined is the same as passing write access*/
+    set access(access: Access | AccessTypes | undefined) {
         if (this.$accessListener) {
             this.dettachValue(this.$accessListener);
             delete this.$accessListener;
@@ -189,9 +198,12 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
                 this.$accessChange(<AccessTypes>acc);
                 this.$access = <AccessTypes>acc;
             });
-        } else {
+        } else if (access) {
             this.$accessChange(access);
             this.$access = access;
+        } else {
+            this.$accessChange(AccessTypes.write);
+            this.$access = AccessTypes.write;
         }
     }
     /**Access change function */

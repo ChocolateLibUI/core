@@ -27,7 +27,7 @@ class TestClass extends Base {
         return 'testclass'
     }
 
-    options(options: number): this {
+    options(options: {}): this {
         return this;
     }
 }
