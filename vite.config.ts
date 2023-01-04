@@ -2,6 +2,7 @@ import { resolve, } from 'path'
 import { defineConfig } from 'vite'
 import { name, dependencies } from "./package.json"
 import dts from "vite-plugin-dts"
+import libCss from 'vite-plugin-libcss';
 
 export default defineConfig(({ command, mode, ssrBuild }) => {
     console.log(command, mode);
@@ -70,9 +71,10 @@ export default defineConfig(({ command, mode, ssrBuild }) => {
                             external: Object.keys(dependencies)
                         },
                     },
-                    plugins: [dts({
-                        rollupTypes: true,
-                    })]
+                    plugins: [
+                        dts({ rollupTypes: true, }),
+                        libCss()
+                    ]
                 }
             }
     }
