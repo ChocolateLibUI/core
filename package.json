@@ -1,6 +1,6 @@
 {
   "name": "@chocolatelibui/core",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,8 @@
     "serve:dev": "vite preview --mode pages",
     "serve:tests": "vite preview --mode testServe",
     "test": "yarn run build:tests && start-server-and-test serve:tests http://localhost:999 'cypress run'",
-    "watch": "start-server-and-test dev:tests http://localhost:999 'cypress open --e2e --browser edge'"
+    "watch": "start-server-and-test dev:tests http://localhost:999 'cypress open --e2e --browser edge'",
+    "prepublishOnly": "yarn run test && yarn run build:lib && yarn run build:pages"
   },
   "devDependencies": {
     "cypress": "12.0.0",
@@ -27,7 +28,8 @@
     "tslib": "^2.4.1",
     "typescript": "^4.9.3",
     "vite": "^3.2.3",
-    "vite-plugin-dts": "^1.7.1"
+    "vite-plugin-dts": "^1.7.1",
+    "vite-plugin-libcss": "^1.0.5"
   },
   "author": "chocolateandmilkwin",
   "license": "Apache-2.0",
