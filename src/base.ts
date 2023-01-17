@@ -62,7 +62,8 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
     /**Access listener*/
     private $accessListener: Listener<AccessTypes> | undefined
 
-    constructor() {
+    //@ts-expect-error
+    constructor(...any: any[]) {
         super()
         this.events.target = this;
     }

@@ -3,7 +3,7 @@ import { Base, ConnectEventVal, defineElement, BaseObserver } from "../src";
 class TestClass extends Base {
     connects: number = 0;
     disconnects: number = 0;
-    constructor(num?: string) {
+    constructor(num: string) {
         super();
         this.style.height = '2rem';
         this.events.on('connect', (data) => {
