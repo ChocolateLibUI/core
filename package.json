@@ -42,7 +42,7 @@
   },
   "homepage": "https://github.com/ChocolateLibUI/core#readme",
   "dependencies": {
-    "@chocolatelib/events": "<1.0.0 || ^1.0.0",
-    "@chocolatelib/value": "<1.0.0 || ^1.0.0"
+    "@chocolatelib/events": ">=0.0.7 || ^1.0.0",
+    "@chocolatelib/state": ">=0.0.2 || ^1.0.0"
   }
 }
