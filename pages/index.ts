@@ -1,8 +1,12 @@
-import { Base, ConnectEventVal, defineElement, BaseObserver } from "../src";
+import { createState } from "@chocolatelib/state";
+import { Base, ConnectEventVal, defineElement, BaseObserver, AccessTypes } from "../src";
 
 class TestClass extends Base {
+    number: number = 0;
     connects: number = 0;
     disconnects: number = 0;
+    visible: number = 0;
+    invisible: number = 0;
     constructor(num: string) {
         super();
         this.style.height = '2rem';
@@ -10,17 +14,24 @@ class TestClass extends Base {
             switch (data.data) {
                 case ConnectEventVal.Connect:
                     this.connects++;
-                    this.style.backgroundColor = 'green';
-                    console.log('test1');
-
+                    console.log('con1');
                     break;
                 case ConnectEventVal.Disconnect:
                     this.disconnects++;
-                    this.style.backgroundColor = 'red';
-                    console.log('test2');
+                    console.log('con2');
                     break;
             }
-            this.innerHTML = `Test Element ${num} Connects:${this.connects} Disconnects${this.disconnects}`;
+            this.render();
+        })
+        this.events.on('visible', (data) => {
+            if (data.data) {
+                this.visible++;
+                console.log('vis1');
+            } else {
+                this.invisible++;
+                console.log('vis2');
+            }
+            this.render();
         })
     }
     static elementName(): string {
@@ -29,6 +40,11 @@ class TestClass extends Base {
 
     options(options: {}): this {
         return this;
+    }
+
+    render() {
+        this.innerHTML = `Test Element ${this.number} Connects:${this.connects} Disconnects${this.disconnects} Visible:${this.visible} Invisible${this.invisible}`;
+        this.style.backgroundColor = `rgb(${Number(!this.isVisible) * 255},${Number(this.isVisible) * 255},0)`
     }
 }
 defineElement(TestClass);
@@ -54,10 +70,13 @@ connectTestContainer.style.flexDirection = 'column';
 let connectTestChildren: TestClass[] = [];
 for (let i = 0; i <= 19; i++) {
     let inst = new TestClass(String(i));
-    connectTestContainer.appendChild(inst);
+    //connectTestContainer.appendChild(inst);
     connectTestChildren[i] = inst;
 }
 
+let { state, set } = createState(AccessTypes.write)
+
+connectTestChildren[0].attachStateToProp('access', state)
 
 let observerTest = document.body.appendChild(document.createElement('div'));
 let observerTestTitle = observerTest.appendChild(document.createElement('div'));
@@ -85,7 +104,7 @@ observerTestButtonConn.onclick = () => {
 let observerTestContainer = observerTest.appendChild(document.createElement('div'));
 observerTestContainer.style.display = 'flex';
 observerTestContainer.style.flexDirection = 'column';
-let observer = new BaseObserver({ threshold: 1 });
+let observer = new BaseObserver({ threshold: 0.9 });
 let observerTestChildren: TestClass[] = [];
 for (let i = 0; i <= 99; i++) {
     let inst = new TestClass(String(i));
