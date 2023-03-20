@@ -63,6 +63,8 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
 
     private _access: AccessTypes | undefined;
 
+    private _propStates: { [k in keyof this]: [StateSubscriber<any>, boolean] } | undefined
+
     constructor(...any: any[]) {
         super()
         let events = createEventHandler<MoreEvents, Base<MoreEvents>>(this)
@@ -123,7 +125,7 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
         return this
     }
 
-    /**This changes the web component to only call its connect functions when an observer observs it*/
+    /**Attaches the component to an observer, which is needed for the isVisible state and event to work and for the state system to work on visible*/
     attachToObserver(observer?: BaseObserver) {
         if (observer) {
             if (this.isConnected) {
@@ -141,9 +143,8 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
         }
     }
 
-    /**Attaches a Value to the element, which will automatically have the function connected with the element
-     * a function cannot be attached with multiple values, if done it will throw
-     * a Value can be attached with multiple different functions */
+    /**Attaches a state to a function, so that the function is subscribed to the state when the component is connected
+     * @param visible when set true the function is only subscribed when the element is visible, this requires an observer to be attached to the element*/
     attachState<T>(state: StateRead<T>, func: StateSubscriber<T>, visible?: boolean) {
         if (visible) {
             if (!this._visibleStates) {
@@ -165,14 +166,7 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
         return func;
     }
 
-    /**Attaches a Value to the element, which will automatically have the function connected with the element
-     * a function cannot be attached with multiple values, if done it will throw
-     * a Value can be attached with multiple different functions */
-    attachStateToProp<T extends keyof this>(prop: T, state: StateRead<typeof this[T]>, visible?: boolean) {
-
-    }
-
-    /**Dettaches the function from the element */
+    /**Dettaches the function from the state/component */
     dettachState(func: StateSubscriber<any>, visible?: boolean) {
         if (visible) {
             if (this._visibleSubscribers) {
@@ -199,6 +193,18 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
                 this._connectSubscribers.splice(index, 1);
             }
         }
+    }
+
+    attachStateToProp<T extends keyof this>(prop: T, state: StateRead<typeof this[T]>, visible?: boolean) {
+        if (!this._propStates)
+            this._propStates = {} as { [k in keyof this]: [StateSubscriber<any>, boolean] };
+        this.dettachStateFromProp(prop);
+        this._propStates[prop] = [this.attachState(state, (val) => { this[prop] = val; }, visible), Boolean(visible)]
+    }
+
+    dettachStateFromProp<T extends keyof this>(prop: T) {
+        if (this._propStates && prop in this._propStates)
+            this.dettachState(...(this._propStates[prop] as [StateSubscriber<any>, boolean | undefined]))
     }
 
     /**Sets the access of the element, passing undefined is the same as passing write access*/

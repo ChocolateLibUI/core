@@ -49,6 +49,25 @@ class TestClass extends Base {
 }
 defineElement(TestClass);
 
+class TestClass2 extends Base {
+    constructor() {
+        super();
+    }
+    static elementName(): string { return 'testclass2' }
+}
+defineElement(TestClass2);
+
+let inst = new TestClass2();
+document.body.appendChild(inst);
+
+let { state: state2, set: set2 } = createState('Testing Attention Please');
+
+inst.attachStateToProp('innerHTML', state2)
+
+setTimeout(() => {
+    set2('Testing something else')
+}, 2000);
+
 let connectTest = document.body.appendChild(document.createElement('div'));
 let connectTestTitle = connectTest.appendChild(document.createElement('div'));
 connectTestTitle.innerHTML = 'Test Connecting'
@@ -70,7 +89,7 @@ connectTestContainer.style.flexDirection = 'column';
 let connectTestChildren: TestClass[] = [];
 for (let i = 0; i <= 19; i++) {
     let inst = new TestClass(String(i));
-    //connectTestContainer.appendChild(inst);
+    connectTestContainer.appendChild(inst);
     connectTestChildren[i] = inst;
 }
 
