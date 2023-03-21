@@ -49,6 +49,7 @@ class TestClass extends Base {
 }
 defineElement(TestClass);
 
+
 class TestClass2 extends Base {
     constructor() {
         super();
@@ -60,12 +61,12 @@ defineElement(TestClass2);
 let inst = new TestClass2();
 document.body.appendChild(inst);
 
-let { state: state2, set: set2 } = createState('Testing Attention Please');
+let state2 = createState('Testing Attention Please');
 
 inst.attachStateToProp('innerHTML', state2)
 
 setTimeout(() => {
-    set2('Testing something else')
+    state2.set('Testing something else')
 }, 2000);
 
 let connectTest = document.body.appendChild(document.createElement('div'));
@@ -93,7 +94,7 @@ for (let i = 0; i <= 19; i++) {
     connectTestChildren[i] = inst;
 }
 
-let { state, set } = createState(AccessTypes.write)
+let state = createState(AccessTypes.write)
 
 connectTestChildren[0].attachStateToProp('access', state)
 

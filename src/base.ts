@@ -2,7 +2,7 @@ import "./base.scss"
 import { createEventHandler, EventConsumer, EventProducer } from "@chocolatelib/events";
 import { BaseObserver } from "./observer";
 import { StateRead, StateSubscriber } from "@chocolatelib/state";
-import { Access, AccessTypes } from "./access";
+import { AccessTypes } from "./access";
 
 /**Event types for base*/
 export const enum ConnectEventVal {
@@ -151,18 +151,20 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
                 this._visibleStates = [];
                 this._visibleSubscribers = [];
             }
-            if (this.isVisible) {
+            this._visibleStates.push(state);
+            this._visibleSubscribers!.push(func);
+            if (this.isVisible)
                 state.subscribe(func, true);
-            }
             return func;
         }
         if (!this._connectStates) {
             this._connectStates = [];
             this._connectSubscribers = [];
         }
-        if (this.isConnected) {
+        this._connectStates.push(state);
+        this._connectSubscribers!.push(func);
+        if (this.isConnected)
             state.subscribe(func, true);
-        }
         return func;
     }
 

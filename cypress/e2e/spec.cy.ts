@@ -105,24 +105,24 @@ describe('Value', function () {
   defineElement(TestClass);
   it('Attaching Value then appending element', function (done) {
     let inst = new TestClass();
-    let { state, set } = createState(1);
+    let state = createState(1);
     inst.attachState(state, (val) => {
       expect(val).equal(2);
       done(undefined);
     });
     document.body.appendChild(inst);
-    set(2);
+    state.set(2);
   });
   it('Attaching Value then appending element, then removing element', function () {
     let inst = new TestClass();
-    let { state, set } = createState(1);
+    let state = createState(1);
     inst.attachState(state, () => { });
     document.body.appendChild(inst);
     document.body.removeChild(inst);
   });
   it('Attaching Value then appending element, then dettaching value', function () {
     let inst = new TestClass();
-    let { state, set } = createState(1);
+    let state = createState(1);
     let func = inst.attachState(state, () => { });
     document.body.appendChild(inst);
     inst.dettachState(func);
