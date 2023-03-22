@@ -1,5 +1,5 @@
 /// <reference types="cypress" />
-import { createState } from "@chocolatelib/state";
+import { State } from "@chocolatelib/state";
 import { Base, BaseEvents, defineElement, ConnectEventVal, AccessTypes } from "../../src";
 
 describe('Base', function () {
@@ -98,35 +98,44 @@ describe('Connecting disconnecting and adopting', function () {
   });
 });
 
-describe('Value', function () {
+describe('State', function () {
   class TestClass extends Base {
     static elementName(): string { return 'testclass3' }
   };
   defineElement(TestClass);
-  it('Attaching Value then appending element', function (done) {
+  it('Attaching State then appending element', function (done) {
     let inst = new TestClass();
-    let state = createState(1);
+    let state = new State(1);
     inst.attachState(state, (val) => {
       expect(val).equal(2);
       done(undefined);
     });
+    expect(state.inUse()).equal(false);
     document.body.appendChild(inst);
+    expect(state.inUse()).equal(true);
     state.set(2);
   });
-  it('Attaching Value then appending element, then removing element', function () {
+  it('Attaching State then appending element, then removing element', function () {
     let inst = new TestClass();
-    let state = createState(1);
+    let state = new State(1);
     inst.attachState(state, () => { });
+    expect(state.inUse()).equal(false);
     document.body.appendChild(inst);
+    expect(state.inUse()).equal(true);
     document.body.removeChild(inst);
+    expect(state.inUse()).equal(false);
   });
-  it('Attaching Value then appending element, then dettaching value', function () {
+  it('Attaching State then appending element, then dettaching State', function () {
     let inst = new TestClass();
-    let state = createState(1);
+    let state = new State(1);
     let func = inst.attachState(state, () => { });
+    expect(state.inUse()).equal(false);
     document.body.appendChild(inst);
+    expect(state.inUse()).equal(true);
     inst.dettachState(func);
+    expect(state.inUse()).equal(false);
     document.body.removeChild(inst);
+    expect(state.inUse()).equal(false);
   });
 });
 describe('Access', function () {

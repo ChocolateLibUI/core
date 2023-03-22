@@ -1,4 +1,4 @@
-import { createState } from "@chocolatelib/state";
+import { State } from "@chocolatelib/state";
 import { Base, ConnectEventVal, defineElement, BaseObserver, AccessTypes } from "../src";
 
 class TestClass extends Base {
@@ -61,7 +61,7 @@ defineElement(TestClass2);
 let inst = new TestClass2();
 document.body.appendChild(inst);
 
-let state2 = createState('Testing Attention Please');
+let state2 = new State('Testing Attention Please');
 
 inst.attachStateToProp('innerHTML', state2)
 
@@ -94,7 +94,7 @@ for (let i = 0; i <= 19; i++) {
     connectTestChildren[i] = inst;
 }
 
-let state = createState(AccessTypes.write)
+let state = new State(AccessTypes.write)
 
 connectTestChildren[0].attachStateToProp('access', state)
 
