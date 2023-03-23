@@ -1,8 +1,8 @@
 import "./base.scss"
-import { EListener, EventHandler } from "@chocolatelib/events";
+import { createEventHandler, EventConsumer, EventProducer } from "@chocolatelib/events";
 import { BaseObserver } from "./observer";
-import { Listener, Value } from "@chocolatelib/value";
-import { Access, AccessTypes } from "./access";
+import { StateRead, StateSubscriber } from "@chocolatelib/state";
+import { AccessTypes } from "./access";
 
 /**Event types for base*/
 export const enum ConnectEventVal {
@@ -17,12 +17,13 @@ export const enum ConnectEventVal {
 /**Events for Base element */
 export interface BaseEvents {
     connect: ConnectEventVal,
+    visible: Boolean,
 }
 
 /**Base options for base class */
 export interface BaseOptions {
     /**Access for element, default is write access */
-    access?: Access | AccessTypes
+    access?: AccessTypes
 }
 
 /**Shared class for elements to extend
@@ -42,62 +43,81 @@ export interface BaseOptions {
  * read = inert attribute is added making the element uninteractable, and add opacity 0.5 to make the element look inaccessible
  * none = adds display:none to element to make it */
 export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends HTMLElement {
-    private $connectedObserver?: BaseObserver;
-    /**Works when element is connected to observer, otherwise it is an alias for isConnected*/
-    readonly isVisible: boolean = false;
-    /**Events for element*/
-    readonly events: EventHandler<MoreEvents, Base<MoreEvents>> = new EventHandler<MoreEvents, Base<MoreEvents>>;
     /**Returns the name used to define the element */
     static elementName() { return '@abstract@'; }
     /**Returns the namespace override for the element*/
     static elementNameSpace() { return 'chocolatelibui-core'; }
-    /**List of attached Values */
-    private $values: Value<any>[] | undefined
-    /**List of functions for attached values */
-    private $valueFuncs: ((value: any) => void)[] | undefined
-    /**Function for connecting values */
-    private $valueConnector: EListener<"connect", Base<MoreEvents>, MoreEvents["connect"]> | undefined
-    /**Access of element*/
-    protected $access: AccessTypes = AccessTypes.write
-    /**Access listener*/
-    private $accessListener: Listener<AccessTypes> | undefined
+    /**Events for element*/
+    protected _events: EventProducer<MoreEvents, Base<MoreEvents>>
+    /**Events for element*/
+    readonly events: EventConsumer<MoreEvents, Base<MoreEvents>>
 
-    //@ts-expect-error
+    private _connectStates: StateRead<any>[] | undefined;
+    private _connectSubscribers: StateSubscriber<any>[] | undefined;
+
+    /**Works when element is connected to observer, otherwise it is an alias for isConnected*/
+    readonly isVisible: boolean = false;
+    private _observer: BaseObserver | undefined;
+    private _visibleStates: StateRead<any>[] | undefined;
+    private _visibleSubscribers: StateSubscriber<any>[] | undefined;
+
+    private _access: AccessTypes | undefined;
+
+    private _propStates: { [k in keyof this]: [StateSubscriber<any>, boolean] } | undefined
+
     constructor(...any: any[]) {
-        super()
-        this.events.target = this;
+        any;
+        super();
+        let events = createEventHandler<MoreEvents, Base<MoreEvents>>(this)
+        this._events = events.producer;
+        this.events = events.consumer;
     }
 
     /**Runs when element is attached to document*/
     connectedCallback() {
-        if (this.$connectedObserver) {
-            this.$connectedObserver.observe(this);
+        this._events.emit('connect', ConnectEventVal.Connect);
+        if (this._connectStates && this._connectSubscribers)
+            for (let i = 0; i < this._connectStates.length; i++)
+                this._connectStates[i].subscribe(this._connectSubscribers[i], true);
+        if (this._observer) {
+            this._observer.observe(this);
         } else {
-            this.events.emit('connect', ConnectEventVal.Connect);
-            // @ts-expect-error
-            this.isVisible = true;
+            this._setVisible(true);
         }
     }
 
     /**Runs when element is dettached from document*/
     disconnectedCallback() {
-        if (this.$connectedObserver) {
-            this.$connectedObserver.unobserve(this);
-            if (this.isVisible) {
-                this.events.emit('connect', ConnectEventVal.Disconnect);
-                // @ts-expect-error
-                this.isVisible = false;
-            }
-        } else {
-            this.events.emit('connect', ConnectEventVal.Disconnect);
-            // @ts-expect-error
-            this.isVisible = false;
+        this._events.emit('connect', ConnectEventVal.Disconnect);
+        if (this._connectStates && this._connectSubscribers)
+            for (let i = 0; i < this._connectStates.length; i++)
+                this._connectStates[i].unsubscribe(this._connectSubscribers[i]);
+        if (this._observer) {
+            this._observer.unobserve(this);
+            this._setVisible(false);
         }
     }
 
     /**Runs when element is attached to different document*/
     adoptedCallback() {
-        this.events.emit('connect', ConnectEventVal.Adopted);
+        this._events.emit('connect', ConnectEventVal.Adopted);
+    }
+
+    private _setVisible(is: boolean) {
+        if (this.isVisible !== is) {
+            //@ts-expect-error
+            this.isVisible = is;
+            this._events.emit('visible', is);
+            if (is) {
+                if (this._visibleStates && this._visibleSubscribers)
+                    for (let i = 0; i < this._visibleStates.length; i++)
+                        this._visibleStates[i].subscribe(this._visibleSubscribers[i], true);
+            } else {
+                if (this._visibleStates && this._visibleSubscribers)
+                    for (let i = 0; i < this._visibleStates.length; i++)
+                        this._visibleStates[i].unsubscribe(this._visibleSubscribers[i]);
+            }
+        }
     }
 
     /**Sets options for the element*/
@@ -106,109 +126,93 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
         return this
     }
 
-    /**This changes the web component to only call its connect functions when an observer observs it*/
+    /**Attaches the component to an observer, which is needed for the isVisible state and event to work and for the state system to work on visible*/
     attachToObserver(observer?: BaseObserver) {
         if (observer) {
-            this.$connectedObserver = observer;
             if (this.isConnected) {
+                if (this._observer)
+                    this._observer.unobserve(this);
                 observer.observe(this);
             }
-        } else if (this.$connectedObserver) {
-            if (this.isConnected) {
-                this.$connectedObserver.unobserve(this);
-            }
-            if (!this.isVisible) {
-                this.events.emit('connect', ConnectEventVal.Connect);
-                // @ts-expect-error
-                this.isVisible = true;
-            }
-            delete this.$connectedObserver;
+            this._observer = observer;
+        } else if (this._observer) {
+            if (this.isConnected)
+                this._observer.unobserve(this);
+            if (!this.isVisible)
+                this._setVisible(true);
+            this._observer = undefined;
         }
     }
 
-    /**Attaches a Value to the element, which will automatically have the function connected with the element
-     * a function cannot be attached with multiple values, if done it will throw
-     * a Value can be attached with multiple different functions */
-    attachValue<T>(value: Value<T>, func: (value: T) => void) {
-        if (this.$valueFuncs) {
-            if (this.$valueFuncs.includes(func)) {
-                throw 'Function is already attached to this element';
+    /**Attaches a state to a function, so that the function is subscribed to the state when the component is connected
+     * @param visible when set true the function is only subscribed when the element is visible, this requires an observer to be attached to the element*/
+    attachState<T>(state: StateRead<T>, func: StateSubscriber<T>, visible?: boolean) {
+        if (visible) {
+            if (!this._visibleStates) {
+                this._visibleStates = [];
+                this._visibleSubscribers = [];
             }
-        } else {
-            this.$values = [];
-            this.$valueFuncs = [];
+            this._visibleStates.push(state);
+            this._visibleSubscribers!.push(func);
+            if (this.isVisible)
+                state.subscribe(func, true);
+            return func;
         }
-        if (this.$valueConnector) {
-            if (this.isVisible) {
-                value.addListener(func);
-            }
-        } else {
-            this.$valueConnector = this.events.on('connect', (e) => {
-                switch (e.data) {
-                    case ConnectEventVal.Connect:
-                        for (let i = 0; i < this.$values!.length; i++) {
-                            this.$values![i].addListener(this.$valueFuncs![i], true);
-                        }
-                        break;
-                    case ConnectEventVal.Disconnect:
-                        for (let i = 0; i < this.$values!.length; i++) {
-                            this.$values![i].removeListener(this.$valueFuncs![i]);
-                        }
-                        break;
-                    case ConnectEventVal.Adopted:
-                        for (let i = 0; i < this.$values!.length; i++) {
-                            this.$values![i].removeListener(this.$valueFuncs![i]);
-                            this.$values![i].addListener(this.$valueFuncs![i], true);
-                        }
-                }
-            })
+        if (!this._connectStates) {
+            this._connectStates = [];
+            this._connectSubscribers = [];
         }
-        this.$valueFuncs.push(func);
-        this.$values!.push(value);
+        this._connectStates.push(state);
+        this._connectSubscribers!.push(func);
+        if (this.isConnected)
+            state.subscribe(func, true);
         return func;
     }
-    /**Dettaches the function from the element */
-    dettachValue(func: (value: any) => void) {
-        if (this.$valueFuncs) {
-            let index = this.$valueFuncs.indexOf(func);
-            if (index > -1) {
-                if (this.isVisible) {
-                    this.$values![index].removeListener(func);
+
+    /**Dettaches the function from the state/component */
+    dettachState(func: StateSubscriber<any>, visible?: boolean) {
+        if (visible) {
+            if (this._visibleSubscribers) {
+                let index = this._visibleSubscribers.indexOf(func);
+                if (index === -1) {
+                    console.warn('Function not registered with element', func, this);
+                } else {
+                    if (this.isVisible)
+                        this._visibleStates![index].unsubscribe(func);
+                    this._visibleStates!.splice(index, 1);
+                    this._visibleSubscribers.splice(index, 1);
                 }
-                this.$values!.splice(index, 1);
-                this.$valueFuncs.splice(index, 1);
-                if (this.$valueFuncs.length === 0) {
-                    this.events.off('connect', this.$valueConnector!);
-                }
+            }
+            return;
+        }
+        if (this._connectSubscribers) {
+            let index = this._connectSubscribers.indexOf(func);
+            if (index === -1) {
+                console.warn('Function not registered with element', func, this);
+            } else {
+                if (this.isVisible)
+                    this._connectStates![index].unsubscribe(func);
+                this._connectStates!.splice(index, 1);
+                this._connectSubscribers.splice(index, 1);
             }
         }
     }
 
-    /**Returns the current access of the element */
-    get access() {
-        return this.$access
+    attachStateToProp<T extends keyof this>(prop: T, state: StateRead<typeof this[T]>, visible?: boolean) {
+        if (!this._propStates)
+            this._propStates = {} as { [k in keyof this]: [StateSubscriber<any>, boolean] };
+        this.dettachStateFromProp(prop);
+        this._propStates[prop] = [this.attachState(state, (val) => { this[prop] = val; }, visible), Boolean(visible)]
     }
+
+    dettachStateFromProp<T extends keyof this>(prop: T) {
+        if (this._propStates && prop in this._propStates)
+            this.dettachState(...(this._propStates[prop] as [StateSubscriber<any>, boolean | undefined]))
+    }
+
     /**Sets the access of the element, passing undefined is the same as passing write access*/
-    set access(access: Access | AccessTypes | undefined) {
-        if (this.$accessListener) {
-            this.dettachValue(this.$accessListener);
-            delete this.$accessListener;
-        }
-        if (typeof access === 'object' && access instanceof Access) {
-            this.$accessListener = this.attachValue(access, (acc) => {
-                this.$accessChange(<AccessTypes>acc);
-                this.$access = <AccessTypes>acc;
-            });
-        } else if (access) {
-            this.$accessChange(access);
-            this.$access = access;
-        } else {
-            this.$accessChange(AccessTypes.write);
-            this.$access = AccessTypes.write;
-        }
-    }
-    /**Access change function */
-    protected $accessChange(access: AccessTypes) {
+    set access(access: AccessTypes | undefined) {
+        this._access = access;
         switch (access) {
             case AccessTypes.write:
                 this.inert = false;
@@ -220,5 +224,9 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
                 this.setAttribute('inert', 'none');
                 break;
         }
+    }
+    /**Returns the current access of the element */
+    get access() {
+        return this._access ?? AccessTypes.write;
     }
 }

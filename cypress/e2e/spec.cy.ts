@@ -1,5 +1,5 @@
 /// <reference types="cypress" />
-import { Value } from "@chocolatelib/value";
+import { State } from "@chocolatelib/state";
 import { Base, BaseEvents, defineElement, ConnectEventVal, AccessTypes } from "../../src";
 
 describe('Base', function () {
@@ -98,46 +98,44 @@ describe('Connecting disconnecting and adopting', function () {
   });
 });
 
-describe('Value', function () {
+describe('State', function () {
   class TestClass extends Base {
     static elementName(): string { return 'testclass3' }
   };
   defineElement(TestClass);
-  it('Attaching Value then appending element', function () {
-    return new Promise((a) => {
-      let inst = new TestClass();
-      let value = new Value(1);
-      inst.attachValue(value, (val) => {
-        expect(val).equal(2);
-        a(undefined);
-      });
-      expect(value.inUse).equal(false);
-      document.body.appendChild(inst);
-      expect(value.inUse).equal(true);
-      value.set = 2;
+  it('Attaching State then appending element', function (done) {
+    let inst = new TestClass();
+    let state = new State(1);
+    inst.attachState(state, (val) => {
+      expect(val).equal(2);
+      done(undefined);
     });
-  });
-  it('Attaching Value then appending element, then removing element', function () {
-    let inst = new TestClass();
-    let value = new Value(1);
-    inst.attachValue(value, () => { });
-    expect(value.inUse).equal(false);
+    expect(state.inUse()).equal(false);
     document.body.appendChild(inst);
-    expect(value.inUse).equal(true);
-    document.body.removeChild(inst);
-    expect(value.inUse).equal(false);
+    expect(state.inUse()).equal(true);
+    state.set(2);
   });
-  it('Attaching Value then appending element, then dettaching value', function () {
+  it('Attaching State then appending element, then removing element', function () {
     let inst = new TestClass();
-    let value = new Value(1);
-    let func = inst.attachValue(value, () => { });
-    expect(value.inUse).equal(false);
+    let state = new State(1);
+    inst.attachState(state, () => { });
+    expect(state.inUse()).equal(false);
     document.body.appendChild(inst);
-    expect(value.inUse).equal(true);
-    inst.dettachValue(func);
-    expect(value.inUse).equal(false);
+    expect(state.inUse()).equal(true);
     document.body.removeChild(inst);
-    expect(value.inUse).equal(false);
+    expect(state.inUse()).equal(false);
+  });
+  it('Attaching State then appending element, then dettaching State', function () {
+    let inst = new TestClass();
+    let state = new State(1);
+    let func = inst.attachState(state, () => { });
+    expect(state.inUse()).equal(false);
+    document.body.appendChild(inst);
+    expect(state.inUse()).equal(true);
+    inst.dettachState(func);
+    expect(state.inUse()).equal(false);
+    document.body.removeChild(inst);
+    expect(state.inUse()).equal(false);
   });
 });
 describe('Access', function () {

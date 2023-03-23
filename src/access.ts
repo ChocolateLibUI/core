@@ -1,4 +1,4 @@
-import { EnumList, ValueLimitedString } from "@chocolatelib/value";
+import { StateEnumList } from "@chocolatelib/state";
 
 /**Enum of possible access types for base element*/
 export const enum AccessTypes {
@@ -8,15 +8,8 @@ export const enum AccessTypes {
 }
 
 /**List for access type*/
-const accessTypes: EnumList = {
+export const accessTypes = {
     [AccessTypes.write]: { name: 'Write', description: 'Write access to element' },
     [AccessTypes.read]: { name: 'Read', description: 'Read access to element' },
     [AccessTypes.none]: { name: 'None', description: 'No access to element' },
-}
-
-/**Class used to keep track of access for base elements*/
-export class Access extends ValueLimitedString {
-    constructor(init: AccessTypes) {
-        super(init, accessTypes)
-    }
-}
+} satisfies StateEnumList
