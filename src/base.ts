@@ -66,7 +66,8 @@ export abstract class Base<MoreEvents extends BaseEvents = BaseEvents> extends H
     private _propStates: { [k in keyof this]: [StateSubscriber<any>, boolean] } | undefined
 
     constructor(...any: any[]) {
-        super()
+        any;
+        super();
         let events = createEventHandler<MoreEvents, Base<MoreEvents>>(this)
         this._events = events.producer;
         this.events = events.consumer;
