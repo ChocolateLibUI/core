@@ -1,4 +1,4 @@
-import { StateEnumList } from "@chocolatelib/state";
+import { StateEnumHelperList } from "@chocolatelib/state";
 
 /**Enum of possible access types for base element*/
 export const enum AccessTypes {
@@ -15,4 +15,4 @@ export const accessTypes = {
   },
   [AccessTypes.read]: { name: "Read", description: "Read access to element" },
   [AccessTypes.none]: { name: "None", description: "No access to element" },
-} satisfies StateEnumList;
+} satisfies StateEnumHelperList;

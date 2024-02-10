@@ -4,8 +4,12 @@ import {
   EventConsumer,
   EventProducer,
 } from "@chocolatelib/events";
-import { BaseObserver } from "./observer";
-import { StateRead, StateSubscriber } from "@chocolatelib/state";
+import { BaseObserver, BaseObserverOptions } from "./observer";
+import {
+  StateRead,
+  StateReadAsync,
+  StateSubscriber,
+} from "@chocolatelib/state";
 import { AccessTypes } from "./access";
 
 /**Event types for base*/
@@ -28,6 +32,8 @@ export interface BaseEvents {
 export interface BaseOptions {
   /**Access for element, default is write access */
   access?: AccessTypes;
+  /**Options to use for element observer */
+  observerOptions?: BaseObserverOptions;
 }
 
 /**Shared class for elements to extend
@@ -62,20 +68,23 @@ export abstract class Base<
   /**Events for element*/
   readonly events: EventConsumer<MoreEvents, Base<MoreEvents>>;
 
-  private _connectStates: StateRead<any>[] | undefined;
-  private _connectSubscribers: StateSubscriber<any>[] | undefined;
+  #connectStates?: StateReadAsync<any>[];
+  #connectSubscribers?: StateSubscriber<any>[];
+
+  /**Observer for children of this element */
+  #observer?: BaseObserver;
+  #observerOptions?: BaseObserverOptions;
 
   /**Works when element is connected to observer, otherwise it is an alias for isConnected*/
   readonly isVisible: boolean = false;
-  private _observer: BaseObserver | undefined;
-  private _visibleStates: StateRead<any>[] | undefined;
-  private _visibleSubscribers: StateSubscriber<any>[] | undefined;
+  #attachedObserver?: BaseObserver;
+  #visibleStates?: StateReadAsync<any>[];
+  #visibleSubscribers?: StateSubscriber<any>[];
 
-  private _access: AccessTypes | undefined;
+  #access?: AccessTypes;
 
-  private _propStates:
-    | { [k in keyof this]: [StateSubscriber<any>, boolean] }
-    | undefined;
+  #propStates?: { [k in keyof this]: [StateSubscriber<any>, boolean] };
+  #attributeStates?: { [k: string]: [StateSubscriber<any>, boolean] };
 
   constructor(...any: any[]) {
     any;
@@ -88,11 +97,11 @@ export abstract class Base<
   /**Runs when element is attached to document*/
   connectedCallback() {
     this._events.emit("connect", ConnectEventVal.Connect);
-    if (this._connectStates && this._connectSubscribers)
-      for (let i = 0; i < this._connectStates.length; i++)
-        this._connectStates[i].subscribe(this._connectSubscribers[i], true);
-    if (this._observer) {
-      this._observer.observe(this);
+    if (this.#connectStates && this.#connectSubscribers)
+      for (let i = 0; i < this.#connectStates.length; i++)
+        this.#connectStates[i].subscribe(this.#connectSubscribers[i], true);
+    if (this.#attachedObserver) {
+      this.#attachedObserver.observe(this);
     } else {
       this._setVisible(true);
     }
@@ -101,11 +110,11 @@ export abstract class Base<
   /**Runs when element is dettached from document*/
   disconnectedCallback() {
     this._events.emit("connect", ConnectEventVal.Disconnect);
-    if (this._connectStates && this._connectSubscribers)
-      for (let i = 0; i < this._connectStates.length; i++)
-        this._connectStates[i].unsubscribe(this._connectSubscribers[i]);
-    if (this._observer) {
-      this._observer.unobserve(this);
+    if (this.#connectStates && this.#connectSubscribers)
+      for (let i = 0; i < this.#connectStates.length; i++)
+        this.#connectStates[i].unsubscribe(this.#connectSubscribers[i]);
+    if (this.#attachedObserver) {
+      this.#attachedObserver.unobserve(this);
       this._setVisible(false);
     }
   }
@@ -121,61 +130,92 @@ export abstract class Base<
       this.isVisible = is;
       this._events.emit("visible", is);
       if (is) {
-        if (this._visibleStates && this._visibleSubscribers)
-          for (let i = 0; i < this._visibleStates.length; i++)
-            this._visibleStates[i].subscribe(this._visibleSubscribers[i], true);
+        if (this.#visibleStates && this.#visibleSubscribers)
+          for (let i = 0; i < this.#visibleStates.length; i++)
+            this.#visibleStates[i].subscribe(this.#visibleSubscribers[i], true);
       } else {
-        if (this._visibleStates && this._visibleSubscribers)
-          for (let i = 0; i < this._visibleStates.length; i++)
-            this._visibleStates[i].unsubscribe(this._visibleSubscribers[i]);
+        if (this.#visibleStates && this.#visibleSubscribers)
+          for (let i = 0; i < this.#visibleStates.length; i++)
+            this.#visibleStates[i].unsubscribe(this.#visibleSubscribers[i]);
       }
     }
   }
 
   /**Sets options for the element*/
   options(options: BaseOptions): this {
-    this.access = options.access;
+    this.access = options.access ?? AccessTypes.write;
+    if (options.observerOptions) {
+      this.#observerOptions = options.observerOptions;
+    }
     return this;
+  }
+
+  /**Returns an observer for the element */
+  get observer(): BaseObserver {
+    return this.#observer
+      ? this.#observer
+      : (this.#observer = new BaseObserver(
+          this.#observerOptions ?? {
+            root: this,
+            threshold: 0,
+            defferedHidden: 1000,
+          }
+        ));
   }
 
   /**Attaches the component to an observer, which is needed for the isVisible state and event to work and for the state system to work on visible*/
   attachToObserver(observer?: BaseObserver) {
     if (observer) {
       if (this.isConnected) {
-        if (this._observer) this._observer.unobserve(this);
+        if (this.#attachedObserver) this.#attachedObserver.unobserve(this);
         observer.observe(this);
       }
-      this._observer = observer;
-    } else if (this._observer) {
-      if (this.isConnected) this._observer.unobserve(this);
+      this.#attachedObserver = observer;
+    } else if (this.#attachedObserver) {
+      if (this.isConnected) this.#attachedObserver.unobserve(this);
       if (!this.isVisible) this._setVisible(true);
-      this._observer = undefined;
+      this.#attachedObserver = undefined;
+    }
+  }
+
+  /**Attaches the component to an observer, which is needed for the isVisible state and event to work and for the state system to work on visible*/
+  attachToBaseObserver(baseElement?: Base) {
+    if (baseElement) {
+      if (this.isConnected) {
+        if (this.#attachedObserver) this.#attachedObserver.unobserve(this);
+        baseElement.observer.observe(this);
+      }
+      this.#attachedObserver = baseElement.observer;
+    } else if (this.#attachedObserver) {
+      if (this.isConnected) this.#attachedObserver.unobserve(this);
+      if (!this.isVisible) this._setVisible(true);
+      this.#attachedObserver = undefined;
     }
   }
 
   /**Attaches a state to a function, so that the function is subscribed to the state when the component is connected
    * @param visible when set true the function is only subscribed when the element is visible, this requires an observer to be attached to the element*/
   attachState<T>(
-    state: StateRead<T>,
+    state: StateReadAsync<T>,
     func: StateSubscriber<T>,
     visible?: boolean
   ) {
     if (visible) {
-      if (!this._visibleStates) {
-        this._visibleStates = [];
-        this._visibleSubscribers = [];
+      if (!this.#visibleStates) {
+        this.#visibleStates = [];
+        this.#visibleSubscribers = [];
       }
-      this._visibleStates.push(state);
-      this._visibleSubscribers!.push(func);
+      this.#visibleStates.push(state);
+      this.#visibleSubscribers!.push(func);
       if (this.isVisible) state.subscribe(func, true);
       return func;
     }
-    if (!this._connectStates) {
-      this._connectStates = [];
-      this._connectSubscribers = [];
+    if (!this.#connectStates) {
+      this.#connectStates = [];
+      this.#connectSubscribers = [];
     }
-    this._connectStates.push(state);
-    this._connectSubscribers!.push(func);
+    this.#connectStates.push(state);
+    this.#connectSubscribers!.push(func);
     if (this.isConnected) state.subscribe(func, true);
     return func;
   }
@@ -183,47 +223,47 @@ export abstract class Base<
   /**Dettaches the function from the state/component */
   dettachState(func: StateSubscriber<any>, visible?: boolean) {
     if (visible) {
-      if (this._visibleSubscribers) {
-        let index = this._visibleSubscribers.indexOf(func);
+      if (this.#visibleSubscribers) {
+        let index = this.#visibleSubscribers.indexOf(func);
         if (index === -1) {
           console.warn("Function not registered with element", func, this);
         } else {
-          if (this.isVisible) this._visibleStates![index].unsubscribe(func);
-          this._visibleStates!.splice(index, 1);
-          this._visibleSubscribers.splice(index, 1);
+          if (this.isVisible) this.#visibleStates![index].unsubscribe(func);
+          this.#visibleStates!.splice(index, 1);
+          this.#visibleSubscribers.splice(index, 1);
         }
       }
       return;
     }
-    if (this._connectSubscribers) {
-      let index = this._connectSubscribers.indexOf(func);
+    if (this.#connectSubscribers) {
+      let index = this.#connectSubscribers.indexOf(func);
       if (index === -1) {
         console.warn("Function not registered with element", func, this);
       } else {
-        if (this.isVisible) this._connectStates![index].unsubscribe(func);
-        this._connectStates!.splice(index, 1);
-        this._connectSubscribers.splice(index, 1);
+        if (this.isVisible) this.#connectStates![index].unsubscribe(func);
+        this.#connectStates!.splice(index, 1);
+        this.#connectSubscribers.splice(index, 1);
       }
     }
   }
 
   /**Attaches a state to a property, so that the property is updated when the state changes
-   * @prop the property to attach the state to
-   * @state the state to attach to the property
-   * @fallback the fallback value for the property when the state is not ok, if undefined the property is not updated when the state is not ok
-   * @visible when set true the property is only updated when the element is visible, this requires an observer to be attached to the element*/
+   * @param prop the property to attach the state to
+   * @param state the state to attach to the property
+   * @param fallback the fallback value for the property when the state is not ok, if undefined the property is not updated when the state is not ok
+   * @param visible when set true the property is only updated when the element is visible, this requires an observer to be attached to the element*/
   attachStateToProp<T extends keyof this>(
     prop: T,
-    state: StateRead<(typeof this)[T]>,
-    fallback: (typeof this)[T] | undefined,
+    state: StateReadAsync<(typeof this)[T]>,
+    fallback?: (typeof this)[T],
     visible?: boolean
   ) {
-    if (!this._propStates)
-      this._propStates = {} as {
+    if (!this.#propStates)
+      this.#propStates = {} as {
         [k in keyof this]: [StateSubscriber<any>, boolean];
       };
     this.dettachStateFromProp(prop);
-    this._propStates[prop] = [
+    this.#propStates[prop] = [
       this.attachState(
         state,
         (val) => {
@@ -241,9 +281,51 @@ export abstract class Base<
 
   /**Dettaches the state from the property */
   dettachStateFromProp<T extends keyof this>(prop: T) {
-    if (this._propStates && prop in this._propStates)
+    if (this.#propStates && prop in this.#propStates)
       this.dettachState(
-        ...(this._propStates[prop] as [
+        ...(this.#propStates[prop] as [
+          StateSubscriber<any>,
+          boolean | undefined
+        ])
+      );
+  }
+
+  /**Attaches a state to a property, so that the property is updated when the state changes
+   * @param state the state to attach to the property
+   * @param fallback the fallback value for the property when the state is not ok, if undefined the property is not updated when the state is not ok
+   * @param visible when set true the property is only updated when the element is visible, this requires an observer to be attached to the element*/
+  attachStateToAttribute(
+    qualifiedName: string,
+    state: StateRead<string>,
+    fallback?: string,
+    visible?: boolean
+  ) {
+    if (!this.#attributeStates)
+      this.#attributeStates = {} as {
+        [k: string]: [StateSubscriber<any>, boolean];
+      };
+    this.dettachStateFromAttribute(qualifiedName);
+    this.#attributeStates[qualifiedName] = [
+      this.attachState(
+        state,
+        (val) => {
+          if (val.ok) {
+            this.setAttribute(qualifiedName, val.value);
+          } else if (fallback !== undefined) {
+            this.setAttribute(qualifiedName, fallback);
+          }
+        },
+        visible
+      ),
+      Boolean(visible),
+    ];
+  }
+
+  /**Dettaches the state from the property */
+  dettachStateFromAttribute(qualifiedName: string) {
+    if (this.#attributeStates && qualifiedName in this.#attributeStates)
+      this.dettachState(
+        ...(this.#attributeStates[qualifiedName] as [
           StateSubscriber<any>,
           boolean | undefined
         ])
@@ -251,22 +333,26 @@ export abstract class Base<
   }
 
   /**Sets the access of the element, passing undefined is the same as passing write access*/
-  set access(access: AccessTypes | undefined) {
-    this._access = access;
-    switch (access) {
-      case AccessTypes.write:
-        this.inert = false;
-        break;
-      case AccessTypes.read:
-        this.inert = true;
-        break;
-      case AccessTypes.none:
-        this.setAttribute("inert", "none");
-        break;
+  set access(access: AccessTypes | StateReadAsync<AccessTypes>) {
+    if (typeof access === "object") {
+      this.attachStateToProp("access", access, AccessTypes.none);
+    } else {
+      this.#access = access;
+      switch (access) {
+        case AccessTypes.write:
+          this.inert = false;
+          break;
+        case AccessTypes.read:
+          this.inert = true;
+          break;
+        case AccessTypes.none:
+          this.setAttribute("inert", "none");
+          break;
+      }
     }
   }
   /**Returns the current access of the element */
   get access() {
-    return this._access ?? AccessTypes.write;
+    return this.#access ?? AccessTypes.write;
   }
 }
