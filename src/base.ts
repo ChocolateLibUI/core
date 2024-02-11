@@ -31,7 +31,7 @@ export interface BaseEvents {
 /**Base options for base class */
 export interface BaseOptions {
   /**Access for element, default is write access */
-  access?: AccessTypes;
+  access?: AccessTypes | StateReadAsync<AccessTypes>;
   /**Options to use for element observer */
   observerOptions?: BaseObserverOptions;
 }
@@ -143,7 +143,11 @@ export abstract class Base<
 
   /**Sets options for the element*/
   options(options: BaseOptions): this {
-    this.access = options.access ?? AccessTypes.write;
+    if (typeof options.access === "object") {
+      this.accessByState = options.access;
+    } else {
+      this.access = options.access ?? AccessTypes.write;
+    }
     if (options.observerOptions) {
       this.#observerOptions = options.observerOptions;
     }
@@ -333,27 +337,30 @@ export abstract class Base<
   }
 
   /**Sets the access of the element, passing undefined is the same as passing write access*/
-  set access(access: AccessTypes | StateReadAsync<AccessTypes>) {
-    if (typeof access === "object") {
-      this.attachStateToProp("access", access, AccessTypes.none);
-    } else {
-      this.dettachStateFromProp("access");
-      this.#access = access;
-      switch (access) {
-        case AccessTypes.write:
-          this.inert = false;
-          break;
-        case AccessTypes.read:
-          this.inert = true;
-          break;
-        case AccessTypes.none:
-          this.setAttribute("inert", "none");
-          break;
-      }
+  set access(access: AccessTypes) {
+    this.#access = access;
+    switch (access) {
+      case AccessTypes.write:
+        this.inert = false;
+        break;
+      case AccessTypes.read:
+        this.inert = true;
+        break;
+      case AccessTypes.none:
+        this.setAttribute("inert", "none");
+        break;
     }
   }
   /**Returns the current access of the element */
-  get access() {
+  get access(): AccessTypes {
     return this.#access ?? AccessTypes.write;
+  }
+  /**Sets the access of the element, passing undefined is the same as passing write access*/
+  set accessByState(access: StateReadAsync<AccessTypes> | undefined) {
+    if (access) {
+      this.attachStateToProp("access", access, AccessTypes.none);
+    } else {
+      this.dettachStateFromProp("access");
+    }
   }
 }
