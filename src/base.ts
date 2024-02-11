@@ -6,6 +6,7 @@ import {
 } from "@chocolatelib/events";
 import { BaseObserver, BaseObserverOptions } from "./observer";
 import {
+  StateError,
   StateRead,
   StateReadAsync,
   StateSubscriber,
@@ -144,7 +145,7 @@ export abstract class Base<
   /**Sets options for the element*/
   options(options: BaseOptions): this {
     if (typeof options.access === "object") {
-      this.accessByState = options.access;
+      this.accessByState(options.access);
     } else {
       this.access = options.access ?? AccessTypes.write;
     }
@@ -254,13 +255,15 @@ export abstract class Base<
   /**Attaches a state to a property, so that the property is updated when the state changes
    * @param prop the property to attach the state to
    * @param state the state to attach to the property
+   * @param visible when set true the property is only updated when the element is visible, this requires an observer to be attached to the element
    * @param fallback the fallback value for the property when the state is not ok, if undefined the property is not updated when the state is not ok
-   * @param visible when set true the property is only updated when the element is visible, this requires an observer to be attached to the element*/
+   * */
   attachStateToProp<T extends keyof this>(
     prop: T,
     state: StateReadAsync<(typeof this)[T]>,
+    visible?: boolean,
     fallback?: (typeof this)[T],
-    visible?: boolean
+    fallbackFunc?: (error: StateError) => (typeof this)[T]
   ) {
     if (!this.#propStates)
       this.#propStates = {} as {
@@ -273,6 +276,8 @@ export abstract class Base<
         (val) => {
           if (val.ok) {
             this[prop] = val.value;
+          } else if (fallbackFunc !== undefined) {
+            this[prop] = fallbackFunc(val.error);
           } else if (fallback !== undefined) {
             this[prop] = fallback;
           }
@@ -301,8 +306,9 @@ export abstract class Base<
   attachStateToAttribute(
     qualifiedName: string,
     state: StateRead<string>,
+    visible?: boolean,
     fallback?: string,
-    visible?: boolean
+    fallbackFunc?: (error: StateError) => string
   ) {
     if (!this.#attributeStates)
       this.#attributeStates = {} as {
@@ -315,6 +321,8 @@ export abstract class Base<
         (val) => {
           if (val.ok) {
             this.setAttribute(qualifiedName, val.value);
+          } else if (fallbackFunc) {
+            this.setAttribute(qualifiedName, fallbackFunc(val.error));
           } else if (fallback !== undefined) {
             this.setAttribute(qualifiedName, fallback);
           }
@@ -356,9 +364,14 @@ export abstract class Base<
     return this.#access ?? AccessTypes.write;
   }
   /**Sets the access of the element, passing undefined is the same as passing write access*/
-  set accessByState(access: StateReadAsync<AccessTypes> | undefined) {
+  accessByState(
+    access: StateReadAsync<AccessTypes> | undefined,
+    visible?: boolean,
+    fallback?: AccessTypes,
+    fallbackFunc?: (error: StateError) => AccessTypes
+  ) {
     if (access) {
-      this.attachStateToProp("access", access, AccessTypes.none);
+      this.attachStateToProp("access", access, visible, fallback, fallbackFunc);
     } else {
       this.dettachStateFromProp("access");
     }
