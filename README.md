@@ -4,6 +4,10 @@ Core for shared functionality for all elements
 
 # Changelog
 
+- ## 0.3.1
+
+  Fixed if access was linked to state and then set to fixed value, state would not be released
+
 - ## 0.3.0
   Updated to newest State changes
   Added easier way to generate an observer from a Base Element

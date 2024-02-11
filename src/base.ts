@@ -337,6 +337,7 @@ export abstract class Base<
     if (typeof access === "object") {
       this.attachStateToProp("access", access, AccessTypes.none);
     } else {
+      this.dettachStateFromProp("access");
       this.#access = access;
       switch (access) {
         case AccessTypes.write:
