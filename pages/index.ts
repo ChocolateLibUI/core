@@ -81,7 +81,7 @@ setTimeout(() => {
 
 let state3 = new State(Ok(AccessTypes.write));
 
-inst.access = state3;
+inst.accessByState(state3);
 setTimeout(() => {
   state3.set(Ok(AccessTypes.none));
   setTimeout(() => {
